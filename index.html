@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Portugali Autotripp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────── */
+    :root {
+      --bg:           #F4F1EB;
+      --surface:      #FFFFFF;
+      --surface-2:    #FAF8F4;
+      --header-bg:    #162840;
+      --header-text:  #EEF2F7;
+      --text-1:       #18243A;
+      --text-2:       #5C6A7E;
+      --text-3:       #9AA3B2;
+      --border:       #E2DAD0;
+      --border-light: #EDE8E2;
+      --accent:       #1B6CA8;
+      --accent-bg:    #EBF4FB;
+      --accent-border:#B4CFEA;
+      --warn-bg:      #FEF9EC;
+      --warn-border:  #D4A020;
+      --warn-text:    #6B4E00;
+      --urgent-bg:    #FEF0F0;
+      --urgent-border:#D04040;
+      --urgent-text:  #7A1010;
+      --ok-bg:        #F0FAF4;
+      --ok-border:    #60B880;
+      --ok-text:      #0F5828;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:           #0D1824;
+        --surface:      #172030;
+        --surface-2:    #1C2A3C;
+        --header-bg:    #0A1520;
+        --header-text:  #D8E4F0;
+        --text-1:       #D0DCE8;
+        --text-2:       #7A92AC;
+        --text-3:       #4A6070;
+        --border:       #253545;
+        --border-light: #1E2E3E;
+        --accent:       #5AA4D8;
+        --accent-bg:    #142030;
+        --accent-border:#2A4A6A;
+        --warn-bg:      #251C08;
+        --warn-border:  #906A10;
+        --warn-text:    #D8A840;
+        --urgent-bg:    #250A0A;
+        --urgent-border:#902020;
+        --urgent-text:  #E08080;
+        --ok-bg:        #0A2018;
+        --ok-border:    #2A7048;
+        --ok-text:      #60C880;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg:           #0D1824;
+      --surface:      #172030;
+      --surface-2:    #1C2A3C;
+      --header-bg:    #0A1520;
+      --header-text:  #D8E4F0;
+      --text-1:       #D0DCE8;
+      --text-2:       #7A92AC;
+      --text-3:       #4A6070;
+      --border:       #253545;
+      --border-light: #1E2E3E;
+      --accent:       #5AA4D8;
+      --accent-bg:    #142030;
+      --accent-border:#2A4A6A;
+      --warn-bg:      #251C08;
+      --warn-border:  #906A10;
+      --warn-text:    #D8A840;
+      --urgent-bg:    #250A0A;
+      --urgent-border:#902020;
+      --urgent-text:  #E08080;
+      --ok-bg:        #0A2018;
+      --ok-border:    #2A7048;
+      --ok-text:      #60C880;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text-1);
+      line-height: 1.5;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .container {
+      display: flex;
+      height: 100dvh;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #map { flex: 1; min-width: 0; position: relative; }
+
+    .sidebar {
+      width: 380px;
+      flex-shrink: 0;
+      max-width: 100%;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .sidebar-header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 16px 18px 14px;
+      flex-shrink: 0;
+    }
+    .header-eyebrow {
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 5px;
+    }
+    .header-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+    .header-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .header-pill {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      color: var(--header-text);
+      opacity: 0.8;
+    }
+
+    /* ── Scroll area ────────────────────────────────────────── */
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Booking panel ──────────────────────────────────────── */
+    .booking-panel {
+      margin: 12px 14px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--warn-border);
+    }
+    .booking-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--warn-bg);
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 44px;
+    }
+    .booking-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .booking-header-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--warn-text);
+    }
+    .booking-chevron {
+      font-size: 11px;
+      color: var(--warn-text);
+      opacity: 0.5;
+      transition: transform 0.2s;
+    }
+    .booking-chevron.open { transform: rotate(90deg); }
+
+    .booking-body { display: none; background: var(--surface); }
+    .booking-body.open { display: block; }
+
+    .booking-section {
+      padding: 10px 14px 8px;
+      border-top: 1px solid var(--border-light);
+    }
+    .booking-section:first-child { border-top: none; }
+    .section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .section-label.urgent { color: var(--urgent-text); }
+    .section-label.warn   { color: var(--warn-text); }
+    .section-label.ok     { color: var(--ok-text); }
+
+    .booking-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .booking-item:last-child { border-bottom: none; }
+    .b-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .b-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 1px;
+    }
+    .b-note { font-size: 10.5px; color: var(--text-2); line-height: 1.4; }
+    .b-urgent .b-name { color: var(--urgent-text); }
+
+    /* ── Days ───────────────────────────────────────────────── */
+    .day { border-bottom: 1px solid var(--border-light); }
+
+    .day-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 52px;
+    }
+    .day-header:hover { background: var(--surface-2); }
+
+    .day-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .day-meta { flex: 1; min-width: 0; }
+    .day-title { font-size: 13px; font-weight: 700; color: var(--text-1); }
+    .day-route {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .day-toggle { font-size: 11px; color: var(--text-3); flex-shrink: 0; margin-top: 3px; }
+
+    .day-content { display: none; padding: 2px 0 8px; }
+    .day-content.open { display: block; }
+
+    .day-summary {
+      margin: 4px 14px 8px 34px;
+      padding: 8px 10px;
+      background: var(--accent-bg);
+      border-left: 3px solid var(--accent-border);
+      border-radius: 0 6px 6px 0;
+      font-size: 11px;
+      color: var(--text-2);
+      line-height: 1.55;
+    }
+
+    /* ── Stop card ──────────────────────────────────────────── */
+    .stop-card {
+      margin: 0 14px 8px 34px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .stop-card-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--surface);
+    }
+    .stop-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .badge-sleep { background: #dbeafe; color: #1d4ed8; }
+    .badge-stop  { background: #d1fae5; color: #065f46; }
+    .badge-city  { background: #fef3c7; color: #92400e; }
+    .stop-name  { font-size: 13px; font-weight: 700; color: var(--text-1); flex: 1; min-width: 0; }
+    .stop-time  {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-2);
+      background: var(--bg);
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .stop-body { padding: 8px 12px 10px; }
+    .stop-desc {
+      font-size: 11.5px;
+      color: var(--text-2);
+      line-height: 1.55;
+      margin-bottom: 6px;
+    }
+    .highlights { list-style: none; }
+    .highlights li {
+      font-size: 11px;
+      color: var(--text-1);
+      line-height: 1.45;
+      padding: 3px 0;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .highlights li:first-child { border-top: none; }
+    .hi-icon { flex-shrink: 0; font-size: 12px; }
+    .hi-text { flex: 1; }
+    .tip {
+      margin-top: 7px;
+      padding: 5px 8px;
+      background: var(--warn-bg);
+      border-left: 3px solid var(--warn-border);
+      border-radius: 0 4px 4px 0;
+      font-size: 10.5px;
+      color: var(--warn-text);
+      line-height: 1.45;
+    }
+
+    /* ── Day footer ─────────────────────────────────────────── */
+    .day-footer {
+      padding: 4px 14px 8px 34px;
+      font-size: 10.5px;
+      color: var(--text-3);
+      border-top: 1px solid var(--border-light);
+    }
+    .day-footer .loaded { color: var(--text-2); font-weight: 500; }
+
+    /* ── Map loading ────────────────────────────────────────── */
+    #map-loading {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22,40,64,.9);
+      color: #fff;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      padding: 7px 16px;
+      border-radius: 20px;
+      z-index: 1000;
+      pointer-events: none;
+      transition: opacity .3s;
+      white-space: nowrap;
+    }
+    #map-loading.hidden { opacity: 0; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .container { flex-direction: column; }
+      #map { height: 45vh; flex: none; }
+      .sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        flex: 1;
+      }
+      .header-title { font-size: 19px; }
+    }
+    @media (min-width: 701px) and (max-width: 1024px) {
+      .sidebar { width: 320px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #map-loading, .booking-chevron { transition: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div id="map"><div id="map-loading">Laen marsruute…</div></div>
+  <div class="sidebar">
+
+    <div class="sidebar-header">
+      <div class="header-eyebrow">Autotripp · august 2026</div>
+      <div class="header-title">Portugal</div>
+      <div class="header-pills">
+        <span class="header-pill">26.–29. aug</span>
+        <span class="header-pill">Rendiauto</span>
+        <span class="header-pill">4 päeva</span>
+        <span class="header-pill">3 ööbimist</span>
+      </div>
+    </div>
+
+    <div class="sidebar-scroll">
+
+      <!-- Booking panel -->
+      <div class="booking-panel">
+        <div class="booking-header" onclick="toggleBooking()">
+          <div class="booking-header-left">
+            <span style="font-size:15px">🎫</span>
+            <span class="booking-header-title">Broneeri ette — enne reisi</span>
+          </div>
+          <span class="booking-chevron open" id="b-chevron">▾</span>
+        </div>
+        <div class="booking-body open" id="booking-body">
+
+          <div class="booking-section">
+            <div class="section-label urgent">⚠️ Kohustuslik ette osta</div>
+            <div class="booking-item b-urgent">
+              <span class="b-icon">🏰</span>
+              <div>
+                <div class="b-name">Pena loss, Sintra</div>
+                <div class="b-note">Augustis müüakse välja päevapealt &nbsp;·&nbsp; parquesdesintra.pt</div>
+              </div>
+            </div>
+            <div class="booking-item b-urgent">
+              <span class="b-icon">🛏</span>
+              <div>
+                <div class="b-name">Óbidos — ööbimine</div>
+                <div class="b-note">Väga piiratud arv majutuskohti, broneerida esimesena</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="booking-section">
+            <div class="section-label warn">📋 Soovitav ette broneerida</div>
+            <div class="booking-item">
+              <span class="b-icon">🌿</span>
+              <div>
+                <div class="b-name">Quinta da Regaleira, Sintra</div>
+                <div class="b-note">quintadaregaleira.pt &nbsp;·&nbsp; pikad järjekorrad augustis</div>
+              </div>
+            </div>
+            <div class="booking-item">
+              <span class="b-icon">🏛️</span>
+              <div>
+                <div class="b-name">Mafra palee</div>
+                <div class="b-note">palaciomafra.gov.pt &nbsp;·&nbsp; soovitatav augustis</div>
+              </div>
+            </div>
+            <div class="booking-item">
+              <span class="b-icon">🛏</span>
+              <div>
+                <div class="b-name">Cascais + Nazaré — ööbimine</div>
+                <div class="b-note">Mõlemad populaarsed sihtpunktid augustis</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="booking-section">
+            <div class="section-label ok">✅ Kohapeal ok</div>
+            <div class="booking-item">
+              <span class="b-icon">⛪</span>
+              <div>
+                <div class="b-name">Alcobaça, Batalha, Fátima, Tomar</div>
+                <div class="b-note">Piletid kassast kohapeal või veebist, järjekorrad mõistlikud</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="itinerary"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const days = [
+  {
+    date: "K, 26.08",
+    color: "#2563eb",
+    route: "Lissabon → Sintra → Cabo da Roca → Cascais",
+    summary: "Täis päev, hästi doseeritud. Sintra sööb kergesti 3–4 tundi, Cabo da Roca on 30–45 min, Cascais ootab õhtuga. Rohkem ei mahu ja ei ole vaja.",
+    stops: [
+      { name: "Lissabon", badge: "city", time: null,
+        desc: "Lahkumine hommikul pärast rendiauto kättesaamist.",
+        highlights: [], lat: 38.717, lng: -9.139 },
+      { name: "Sintra", badge: "stop", time: "3–4 tundi",
+        desc: "UNESCO maailmapärandis romantiline losside linn. Parima vaate saad juba külatänavaid mööda jalutades.",
+        highlights: [
+          { icon: "🏰", text: "Pena loss – värvikirev romantiline loss mäetipul (bussiga üles)" },
+          { icon: "🗼", text: "Mooride loss – keskaegne kindlus mäeharjal, suurepärane panoraam" },
+          { icon: "🌿", text: "Quinta da Regaleira – müstiline mõis salapäraste keldritunnelitega" },
+          { icon: "🍽️", text: "Lõunasöök küla keskel – travessas on palju häid kohvikuid" },
+        ],
+        tip: "Pena loss võib olla järsk – Mooride loss on mugavam valik ja vaade sama ilus.",
+        lat: 38.797, lng: -9.390 },
+      { name: "Cabo da Roca", badge: "stop", time: "30–45 min",
+        desc: "Euroopa kõige läänepoolsem punkt – kaljud 140 m kõrgusel otse Atlandi kohal. Lühike jalutus parkla juurest.",
+        highlights: [
+          { icon: "🌊", text: "Dramatilised kaljuvaated – lõpmatu ookean igas suunas" },
+          { icon: "📜", text: "Sertifikaat \"Olin Euroopa läänetipu\" – saab osta külastuskeskusest" },
+          { icon: "💨", text: "Tuuline – võta soe kiht kaasa isegi suvisel päeval" },
+        ],
+        lat: 38.779, lng: -9.500 },
+      { name: "Cascais", badge: "sleep", time: "õhtu + ujumine",
+        desc: "Endine kuninglik suvituslinn – elegantne, mereäärne, mugav jalutada.",
+        highlights: [
+          { icon: "🏖️", text: "Praia da Rainha + Praia de Cascais – rahulikud rannad, sobivad ujumiseks" },
+          { icon: "🌊", text: "Boca do Inferno – merekaljud linna ääres, imeilusad õhtuvalguses" },
+          { icon: "🍷", text: "Õhtusöök mere ääres – kala ja mereannid" },
+        ],
+        tip: "Cascais rannad on rahulikud ja ujumiseks sobivad – tunnike rannas õhtul on täiesti teostatav.",
+        lat: 38.697, lng: -9.422 }
+    ]
+  },
+  {
+    date: "N, 27.08",
+    color: "#059669",
+    route: "Cascais → Guincho → Ericeira → Mafra → Óbidos",
+    summary: "Täis päev, mõnus tempo. Guincho on lühike peatus, Ericeira lõuna + jalutus ~2h, Mafra ~1,5h. Eakama reisikaaslasega tegelikult küllalt tihe.",
+    stops: [
+      { name: "Cascais", badge: "city", time: null,
+        desc: "Hommikukohv meremaastikuga.", highlights: [],
+        lat: 38.697, lng: -9.422 },
+      { name: "Praia do Guincho", badge: "stop", time: "20–30 min",
+        desc: "Maagilise rannikuteekonna vaatepunkt – lai looduslik rand liivaluidetel, Sintra mäed taustal.",
+        highlights: [
+          { icon: "🌊", text: "Vaatamiseks ilus, ujumiseks hoovused liiga tugevad" },
+          { icon: "🚗", text: "Estrada do Guincho – üks Portugali kaunimaid rannikuteid" },
+        ],
+        lat: 38.727, lng: -9.472 },
+      { name: "Ericeira", badge: "stop", time: "~2 tundi (lõuna)",
+        desc: "Valgepesuline kaluriküla kõrgel merekaljudel. Üks kahest WSL surfipühapaikadest maailmas – aga linn on armas ka ilma surfita.",
+        highlights: [
+          { icon: "🎣", text: "Vanaküla tänavad ja väike sadam – väga fotograafiline" },
+          { icon: "🐟", text: "Lõunasöök – parimad kalatoidud siin kohal" },
+          { icon: "🏖️", text: "Praia do Sul – rahulikum rand, sobib ujumiseks" },
+        ],
+        tip: "Ericeira vanalinn on väike – 1,5–2 tundi piisab. Hea koht lõunaks enne edasisõitu.",
+        lat: 38.963, lng: -9.414 },
+      { name: "Mafra", badge: "stop", time: "~1,5 tundi",
+        desc: "18. sajandi tohutu barokk-palee ja klooster. Hästi korraldatud, tasane, mugav – suur efekt väikese pingutusega.",
+        highlights: [
+          { icon: "🏛️", text: "Palee ja klooster – 1 200 ruumi, 29 sisehoovi" },
+          { icon: "📚", text: "Mafra raamatukogu – 36 000 köidet, imekaunis barokksaal" },
+          { icon: "🔔", text: "Karilloon – 92 kella, üks maailma suurimaid" },
+        ],
+        lat: 38.936, lng: -9.327 },
+      { name: "Óbidos", badge: "sleep", time: "õhtu",
+        desc: "Täiuslik keskaegne linn müüride sees. Õhtul on linn rahulik ja hästi valgustatud.",
+        highlights: [
+          { icon: "🏰", text: "Linnamüür – saab ringi jalutada, vaated ümber linna" },
+          { icon: "🍒", text: "Ginjinha šokolaaditopsis – kirsiliköör kohalikus traditsioonis" },
+          { icon: "⛪", text: "Santa Maria kirik – portselanist seintega sisemus" },
+        ],
+        tip: "Broneeri ööbimine kindlasti ette – linnas on väga piiratud arv majutuskohti.",
+        lat: 39.362, lng: -9.157 }
+    ]
+  },
+  {
+    date: "R, 28.08",
+    color: "#d97706",
+    route: "Óbidos → Alcobaça → Batalha → Nazaré",
+    summary: "Hea päev, kolm tugevat kohta. Alcobaça ~1,5h + Batalha ~2h – Batalha üksi võtab aega ja energiat. Nazaré ootab pärastlõunaga.",
+    stops: [
+      { name: "Óbidos", badge: "city", time: null,
+        desc: "Hommikukohv vanalinnas enne lahkumist.", highlights: [],
+        lat: 39.362, lng: -9.157 },
+      { name: "Alcobaça", badge: "stop", time: "~1,5 tundi",
+        desc: "Portugali suurim keskaegne kirik – 12. sajandist cistertsieni klooster, UNESCO. Kerge jalutus, hästi kliimastatud.",
+        highlights: [
+          { icon: "⛪", text: "Kloostri peakirik – lihtsus ja kõrgus muljetavaldavad" },
+          { icon: "💔", text: "Dom Pedro I ja Inês de Castro sarkofaagid – Portugali tuntuim armastuslugu kivisse raiutud" },
+        ],
+        lat: 39.548, lng: -8.978 },
+      { name: "Batalha", badge: "stop", time: "~2 tundi",
+        desc: "Ehk Portugali ilusaim hoone – 14.–15. saj gooti-manueline klooster, UNESCO. Tase kõrgem kui Alcobaças.",
+        highlights: [
+          { icon: "🏛️", text: "Peaklooster – vapustav gooti fassaad ja siseruumid" },
+          { icon: "🪖", text: "Tundmatu Sõduri hauakamber – igavene tuli" },
+          { icon: "🕳️", text: "Capelas Imperfeitas – manueline kivinikerdus tipptasemel" },
+        ],
+        tip: "Plaani vähemalt 1,5–2 tundi – seda tahab aeglaselt vaadata.",
+        lat: 39.660, lng: -8.826 },
+      { name: "Nazaré", badge: "sleep", time: "pärastlõun + rand + õhtu",
+        desc: "Portugali kõige värvikam kaluriküla – lai liivarand, värviline rahvariie ja hiiglaslike lainete maailmakuulsus.",
+        highlights: [
+          { icon: "🏖️", text: "Praia de Nazaré – lai liivarand, rahulikud lained, parim ujumiskoht marsruudil" },
+          { icon: "🚡", text: "Funicular Sítio ülemisse osasse – panoraam üle küla ja mere" },
+          { icon: "🌅", text: "Päikeseloojang Sítio vaatepunktist kell 19–20 – üks Portugali parimaid" },
+          { icon: "🐟", text: "Õhtusöök – grelliitud lest (linguado) otse merelt" },
+        ],
+        lat: 39.601, lng: -9.072 }
+    ]
+  },
+  {
+    date: "L, 29.08",
+    color: "#7c3aed",
+    route: "Nazaré → Fátima → Tomar → Lissabon",
+    summary: "Kolm peatust, sisukas viimane päev. Fátima ~1,5–2h, Tomar ~1,5h, Lissabonis tagasi pärastlõunal ~15:00–16:00.",
+    stops: [
+      { name: "Nazaré", badge: "city", time: null,
+        desc: "Hommikukohv rannavaatega.", highlights: [],
+        lat: 39.601, lng: -9.072 },
+      { name: "Fátima", badge: "stop", time: "1,5–2 tundi",
+        desc: "Maailma üks olulisemaid katoliku palverändukohti – 1917. aasta ilmumispaik. Rahulik ja muljetavaldav isegi mitteusulistele.",
+        highlights: [
+          { icon: "⛪", text: "Basílica de Nossa Senhora do Rosário – väljaku otsas" },
+          { icon: "🕯️", text: "Ilmumise kabel – koht, kus lapsed 1917 Maarjat nägid" },
+          { icon: "🚶", text: "Palverändurite väljak – Euroopa suurim pärast Vatikani Peetruse väljakut" },
+        ],
+        tip: "Isegi uskmatule on koha mastaap ja vaikus erakordne kogemus.",
+        lat: 39.627, lng: -8.674 },
+      { name: "Tomar", badge: "stop", time: "~1,5 tundi",
+        desc: "Templiitide klooster-loss (Convento de Cristo, UNESCO) – üks Portugali tähelepanuväärsemaid hooneid. Romantiline jõeäärne linn.",
+        highlights: [
+          { icon: "🏰", text: "Convento de Cristo – templiitide keskaegne kindlus-klooster" },
+          { icon: "🌀", text: "Manueline aken – kivinikerduse meistriteeos, fotograafide lemmik" },
+          { icon: "🌿", text: "Nabão jõe ääres jalutamine – linn ise on väga armas" },
+        ],
+        tip: "Fátimast 30 min ida pool – Lissaboni tagasi minnes on kõrvalekaldumine väike.",
+        lat: 39.602, lng: -8.413 },
+      { name: "Lissabon", badge: "city", time: "~15:00–16:00",
+        desc: "Tagasi linna, auto ära õhtul. Puhkus enne kahte täis Lissaboni päeva.",
+        highlights: [
+          { icon: "🚗", text: "Rendiauto tagastamine – broneeri tagastusaeg ette" },
+          { icon: "🍽️", text: "Õhtusöök Alfamas või Belémis – reisiga hüvastijätt" },
+        ],
+        lat: 38.717, lng: -9.139 }
+    ]
+  }
+];
+
+// ── Sidebar builder ───────────────────────────────────────────
+const badgeLabel = b =>
+  b === 'sleep' ? '🛏 Ööbimine' : b === 'city' ? '🚗' : '📍 Peatus';
+
+const itineraryEl = document.getElementById('itinerary');
+
+days.forEach((day, i) => {
+  const div = document.createElement('div');
+  div.className = 'day';
+
+  const stopsHtml = day.stops.map(s => {
+    const timeTag = s.time ? `<span class="stop-time">⏱ ${s.time}</span>` : '';
+    if (!s.highlights.length && !s.tip) {
+      return `<div class="stop-card">
+        <div class="stop-card-head">
+          <span class="stop-badge badge-${s.badge}">${badgeLabel(s.badge)}</span>
+          <span class="stop-name">${s.name}</span>${timeTag}
+        </div>
+        <div class="stop-body"><p class="stop-desc">${s.desc}</p></div>
+      </div>`;
+    }
+    const hiHtml = s.highlights.length
+      ? `<ul class="highlights">${s.highlights.map(h =>
+          `<li><span class="hi-icon">${h.icon}</span><span class="hi-text">${h.text}</span></li>`
+        ).join('')}</ul>` : '';
+    const tipHtml = s.tip ? `<div class="tip">💡 ${s.tip}</div>` : '';
+    return `<div class="stop-card">
+      <div class="stop-card-head">
+        <span class="stop-badge badge-${s.badge}">${badgeLabel(s.badge)}</span>
+        <span class="stop-name">${s.name}</span>${timeTag}
+      </div>
+      <div class="stop-body">
+        <p class="stop-desc">${s.desc}</p>
+        ${hiHtml}${tipHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  div.innerHTML = `
+    <div class="day-header" onclick="toggleDay(${i})">
+      <div class="day-dot" style="background:${day.color}"></div>
+      <div class="day-meta">
+        <div class="day-title">${day.date}</div>
+        <div class="day-route">${day.route}</div>
+      </div>
+      <div class="day-toggle" id="toggle-${i}">▸</div>
+    </div>
+    <div class="day-content" id="day-${i}">
+      <div class="day-summary">${day.summary}</div>
+      ${stopsHtml}
+    </div>
+    <div class="day-footer" id="footer-${i}">
+      <span style="color:var(--text-3);font-style:italic">Arvutan vahemaa…</span>
+    </div>`;
+  itineraryEl.appendChild(div);
+});
+
+document.getElementById('day-0').classList.add('open');
+document.getElementById('toggle-0').textContent = '▾';
+
+function toggleDay(i) {
+  const el  = document.getElementById(`day-${i}`);
+  const tog = document.getElementById(`toggle-${i}`);
+  el.classList.toggle('open');
+  tog.textContent = el.classList.contains('open') ? '▾' : '▸';
+}
+
+function toggleBooking() {
+  const body = document.getElementById('booking-body');
+  const chev = document.getElementById('b-chevron');
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+// ── Map ───────────────────────────────────────────────────────
+const map = L.map('map').setView([39.2, -9.1], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18
+}).addTo(map);
+
+function makeIcon(color, badge) {
+  const sz = badge === 'sleep' ? 16 : 10;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${sz}px;height:${sz}px;background:${badge==='sleep'?color:'#fff'};border:2.5px solid ${color};border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.35)"></div>`,
+    iconSize: [sz, sz], iconAnchor: [sz/2, sz/2]
+  });
+}
+
+days.forEach(day => {
+  day.stops.forEach(stop => {
+    const bHtml = stop.badge === 'sleep'
+      ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px">🛏 Ööbimine</span>`
+      : stop.badge === 'city'
+      ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px">🚗</span>`
+      : `<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px">📍 Peatus</span>`;
+    const timeH = stop.time
+      ? `<div style="font-size:10px;color:#888;margin-top:3px">⏱ ${stop.time}</div>` : '';
+    const hiH = stop.highlights.length
+      ? '<div style="margin-top:6px;border-top:1px solid #eee;padding-top:5px">'
+        + stop.highlights.map(h => `<div style="font-size:11px;color:#444;padding:2px 0">${h.icon} ${h.text}</div>`).join('')
+        + '</div>' : '';
+    L.marker([stop.lat, stop.lng], { icon: makeIcon(day.color, stop.badge) })
+      .addTo(map)
+      .bindPopup(`
+        <div style="min-width:190px;max-width:230px;font-family:-apple-system,sans-serif">
+          <div style="font-size:10px;color:${day.color};font-weight:700;margin-bottom:4px">${day.date}</div>
+          <div style="margin-bottom:4px">${bHtml}</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${stop.name}</div>
+          ${timeH}
+          <div style="font-size:11.5px;color:#444;line-height:1.5;margin-top:5px">${stop.desc}</div>
+          ${hiH}
+        </div>`, { maxWidth: 250 });
+  });
+});
+
+// ── OSRM routing ──────────────────────────────────────────────
+function fmtDur(sec) {
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  return h > 0 ? `${h} h ${m} min` : `${m} min`;
+}
+
+async function loadRoutes() {
+  const loader = document.getElementById('map-loading');
+  let done = 0;
+  await Promise.all(days.map(async (day, di) => {
+    const coords = day.stops.map(s => `${s.lng},${s.lat}`).join(';');
+    try {
+      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+      const d = await r.json();
+      if (d.code !== 'Ok' || !d.routes.length) throw 0;
+      const pts = d.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      L.polyline(pts, { color: day.color, weight: 4, opacity: .85, lineJoin: 'round', lineCap: 'round' }).addTo(map);
+      const km = Math.round(d.routes[0].distance / 1000);
+      document.getElementById(`footer-${di}`).innerHTML =
+        `<span class="loaded">🛣 ${km} km &nbsp;·&nbsp; ⏱ ${fmtDur(d.routes[0].duration)} sõitu</span>`;
+    } catch {
+      L.polyline(day.stops.map(s => [s.lat, s.lng]), { color: day.color, weight: 3, opacity: .5, dashArray: '5 5' }).addTo(map);
+      document.getElementById(`footer-${di}`).innerHTML =
+        `<span style="color:var(--text-3);font-style:italic">Marsruut pole saadaval</span>`;
+    }
+    if (++done === days.length) {
+      loader.classList.add('hidden');
+      setTimeout(() => loader.remove(), 400);
+    }
+  }));
+}
+loadRoutes();
+</script>
+</body>
+</html>
